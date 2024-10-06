@@ -19,13 +19,13 @@ class m241006_163531_create_tiny_url_table extends Migration
             columns: [
                 'id' => $this->primaryKey(),
                 'original_url' => $this->string()->notNull(),
-                'hash' => $this->string(length: 5)->notNull(),
+                'hash' => $this->binary(length: 5)->notNull(),
                 'created_at' => $this->dateTime()->notNull(),
                 'expired_at' => $this->dateTime()->notNull(),
             ],
             options: 'charset=utf8',
         );
-        $this->createIndex(name: 'tiny_url_hash_idx', table: '{{%tiny_url}}', columns: 'hash');
+        $this->createIndex(name: 'tiny_url_hash_idx', table: '{{%tiny_url}}', columns: 'hash(5)');
     }
 
     /**

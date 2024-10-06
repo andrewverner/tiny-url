@@ -2,54 +2,24 @@
 
 namespace app\controllers;
 
+use app\models\TinyUrlForm;
+use app\repositories\TinyUrlRepositoryInterface;
+use app\services\TinyUrlServiceInterface;
 use Yii;
-use yii\filters\AccessControl;
 use yii\web\Controller;
+use yii\web\NotFoundHttpException;
 use yii\web\Response;
-use yii\filters\VerbFilter;
-use app\models\LoginForm;
-use app\models\ContactForm;
 
 class SiteController extends Controller
 {
     /**
      * {@inheritdoc}
      */
-    public function behaviors()
-    {
-        return [
-            'access' => [
-                'class' => AccessControl::class,
-                'only' => ['logout'],
-                'rules' => [
-                    [
-                        'actions' => ['logout'],
-                        'allow' => true,
-                        'roles' => ['@'],
-                    ],
-                ],
-            ],
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'logout' => ['post'],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function actions()
+    public function actions(): array
     {
         return [
             'error' => [
                 'class' => 'yii\web\ErrorAction',
-            ],
-            'captcha' => [
-                'class' => 'yii\captcha\CaptchaAction',
-                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
             ],
         ];
     }
@@ -57,72 +27,38 @@ class SiteController extends Controller
     /**
      * Displays homepage.
      *
+     * @param TinyUrlServiceInterface $tinyUrlService
      * @return string
      */
-    public function actionIndex()
+    public function actionIndex(TinyUrlServiceInterface $tinyUrlService): string
     {
-        return $this->render('index');
-    }
+        $model = new TinyUrlForm();
 
-    /**
-     * Login action.
-     *
-     * @return Response|string
-     */
-    public function actionLogin()
-    {
-        if (!Yii::$app->user->isGuest) {
-            return $this->goHome();
+        if (
+            Yii::$app->request->isPost
+            && $model->load(Yii::$app->request->post())
+            && $model->validate()
+        ) {
+            $tinyUrl = $tinyUrlService->create(tinyUrlForm: $model);
+            $url = 'http://localhost:8087/' . $tinyUrl->hash;
+
+            return $this->render(view: 'short-url', params: ['url' => $url]);
         }
 
-        $model = new LoginForm();
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
+        return $this->render(view: 'index', params: ['model' => $model]);
+    }
+
+    /**
+     * @throws NotFoundHttpException
+     */
+    public function actionTiny(string $hash, TinyUrlRepositoryInterface $tinyUrlRepository): Response
+    {
+        $model = $tinyUrlRepository->findByHash(hash: $hash);
+
+        if ($model === null) {
+            throw new NotFoundHttpException(message: 'Hash not found or expired');
         }
 
-        $model->password = '';
-        return $this->render('login', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Logout action.
-     *
-     * @return Response
-     */
-    public function actionLogout()
-    {
-        Yii::$app->user->logout();
-
-        return $this->goHome();
-    }
-
-    /**
-     * Displays contact page.
-     *
-     * @return Response|string
-     */
-    public function actionContact()
-    {
-        $model = new ContactForm();
-        if ($model->load(Yii::$app->request->post()) && $model->contact(Yii::$app->params['adminEmail'])) {
-            Yii::$app->session->setFlash('contactFormSubmitted');
-
-            return $this->refresh();
-        }
-        return $this->render('contact', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Displays about page.
-     *
-     * @return string
-     */
-    public function actionAbout()
-    {
-        return $this->render('about');
+        return $this->redirect(url: $model->original_url);
     }
 }
