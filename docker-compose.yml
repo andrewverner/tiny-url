@@ -1,0 +1,43 @@
+version: '3.5'
+
+networks:
+  app_network:
+    name: app_network
+    driver: bridge
+
+services:
+
+  php:
+    container_name: tinyurl_php
+    build:
+      context: ./docker/php
+    networks:
+      - app_network
+    volumes:
+      - .:/app
+
+  nginx:
+    container_name: tinyurl_nginx
+    image: nginx:latest
+    networks:
+      - app_network
+    ports:
+      - "8087:80"
+    volumes:
+      - .:/app
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+
+  mysql:
+    container_name: tinyurl_db
+    image: mysql:5.7
+    ports:
+      - "3307:3306"
+    networks:
+      - app_network
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: database
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
