@@ -24,3 +24,5 @@ SADD: 80192.46 requests per second
 HSET: 84317.03 requests per second
 SPOP: 78125.00 requests per second
 ```
+
+Дополнительное ПО, соответственно, брокер сообщений и NoSQL БД
